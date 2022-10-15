@@ -15,11 +15,16 @@ def index_route():
     values = []
 
     for key in columns:
-        values.append(data[key])
+        try:
+            values.append(data[key])
+        except KeyError:
+            return jsonify({
+                "error": f"{key} missing"
+            }), 500
 
     prediction = model.predict([values])
 
-    return jsonify({"result": prediction.tolist()})
+    return jsonify({"result": prediction.tolist()}), 200
 
 
 if __name__ == "__main__":
