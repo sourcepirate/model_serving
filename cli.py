@@ -1,9 +1,30 @@
 import argparse
 import joblib
+import os
 from flask import Flask, jsonify
 from flask import request
+from boto3 import session
+from botocore.client import Config
 
 app = Flask("model_serving")
+
+
+ACCESS_ID = os.environ.get("ACCESS_KEY")
+SECRET_KEY = os.environ.get("SECRET_KEY")
+BUCKET_NAME = os.environ.get("BUCKET")
+ENDPOINT = os.environ.get("ENDPOINT")
+
+DATA_DIR = "/data/"
+
+# Initiate session
+session = session.Session()
+client = session.client(
+    "s3",
+    region_name="sgp1",
+    endpoint_url=ENDPOINT,
+    aws_access_key_id=ACCESS_ID,
+    aws_secret_access_key=SECRET_KEY,
+)
 
 
 @app.post("/")
@@ -18,9 +39,7 @@ def index_route():
         try:
             values.append(data[key])
         except KeyError:
-            return jsonify({
-                "error": f"{key} missing"
-            }), 500
+            return jsonify({"error": f"{key} missing"}), 500
 
     prediction = model.predict([values])
 
@@ -37,6 +56,10 @@ if __name__ == "__main__":
     columns = args.columns.split(",")
     model = args.model
 
-    app.config.update({"model": joblib.load(model), "columns": columns})
+    model_path = f"{DATA_DIR}/{args.model}"
+
+    client.download_file(BUCKET_NAME, f"_models/{args.model}", model_path)
+
+    app.config.update({"model": joblib.load(model_path), "columns": columns})
 
     app.run(host="0.0.0.0", port="4000", debug=False)
