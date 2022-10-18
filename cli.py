@@ -4,7 +4,6 @@ import os
 from flask import Flask, jsonify
 from flask import request
 from boto3 import session
-from botocore.client import Config
 
 app = Flask("model_serving")
 
@@ -14,7 +13,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 BUCKET_NAME = os.environ.get("BUCKET")
 ENDPOINT = os.environ.get("ENDPOINT")
 
-DATA_DIR = "/data/"
+DATA_DIR = "/data"
 
 # Initiate session
 session = session.Session()
@@ -51,15 +50,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--model", required=True, type=str)
     parser.add_argument("-c", "--columns", required=True, type=str)
+    
 
     args = parser.parse_args()
     columns = args.columns.split(",")
     model = args.model
+    
+    model_path = f"_models/{args.model}"
+    data_path = f"{DATA_DIR}/{args.model}"
+    
 
-    model_path = f"{DATA_DIR}/{args.model}"
+    client.download_file(BUCKET_NAME, model_path, data_path)
 
-    client.download_file(BUCKET_NAME, f"_models/{args.model}", model_path)
-
-    app.config.update({"model": joblib.load(model_path), "columns": columns})
+    app.config.update({"model": joblib.load(data_path), "columns": columns})
 
     app.run(host="0.0.0.0", port="4000", debug=False)
